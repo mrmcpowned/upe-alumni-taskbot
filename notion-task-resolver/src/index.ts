@@ -22,6 +22,7 @@ export interface Env {
     // Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
     // MY_BUCKET: R2Bucket;
     NOTION_TOKEN: string;
+    SECRET_TOKEN: string;
 }
 
 export default {
@@ -30,6 +31,12 @@ export default {
         env: Env,
         ctx: ExecutionContext
     ): Promise<Response> {
+        if (
+            request.clone().headers.get("x-custom-token") !== env.SECRET_TOKEN
+        ) {
+            return new Response("Invalid Auth", { status: 401 });
+        }
+
         const tasks: PageObjectResponse[] = await request.json();
 
         const notion = new Client({
