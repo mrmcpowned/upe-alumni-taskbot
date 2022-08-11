@@ -15,6 +15,7 @@ import {
     Committee,
     DiscordConfig,
     DueDate,
+    Env,
     GroupedTasks,
     NotionTask,
     Resolver,
@@ -32,35 +33,6 @@ import {
  *
  * Learn more at https://developers.cloudflare.com/workers/runtime-apis/scheduled-event/
  */
-
-export interface Env {
-    // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-    // MY_KV_NAMESPACE: KVNamespace;
-    //
-    // Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-    // MY_DURABLE_OBJECT: DurableObjectNamespace;
-    //
-    // Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-    // MY_BUCKET: R2Bucket;
-    useBinding: boolean;
-    testing: boolean;
-    workerUrl: string;
-    NOTIONRESOLVER: Fetcher;
-    NOTION_TOKEN: string;
-    ADMIN_HOOK: string;
-    MEMBERSHIP_HOOK: string;
-    COMMS_HOOK: string;
-    MARKETING_HOOK: string;
-    SDMEDIA_HOOK: string;
-    SOCIALNET_HOOK: string;
-    TECH_HOOK: string;
-    IR_HOOK: string;
-    ENGAGEMENT_HOOK: string;
-    CAREERDEV_HOOK: string;
-    TEST_HOOK_1: string;
-    TEST_HOOK_2: string;
-    SECRET_TOKEN: string;
-}
 
 const committees: DiscordConfig = {
     Admin: {
@@ -159,11 +131,11 @@ export default {
         });
 
         console.log(env.NOTIONRESOLVER);
-        
+
         setupEnvironment(env);
 
         const taskResolver = batchResolveTasks(
-            env.NOTIONRESOLVER,
+            env,
             request,
             env.useBinding,
             env.workerUrl
@@ -191,16 +163,21 @@ export default {
             })
         ).results as NotionTask[];
 
-        const pages = (await taskResolver(upcomingEvents)).map((e) => ({
-            ...e,
-            title:
-                e.properties["Name"].results[0]?.title.plain_text ??
-                "Missing Title",
-            owningTeam: e.properties["Type"].multi_select.filter(
-                (t: SelectPropertyItemObjectResponse["select"]) =>
-                    t?.name !== "Event"
-            )[0].name,
-        }));
+        const pages = (await taskResolver(upcomingEvents))
+            .map((e) => {
+                console.log("Event: ", e);
+                return e;
+            })
+            .map((e) => ({
+                ...e,
+                title:
+                    e.properties["Name"].results[0]?.title.plain_text ??
+                    "Missing Title",
+                owningTeam: e.properties["Type"].multi_select.filter(
+                    (t: SelectPropertyItemObjectResponse["select"]) =>
+                        t?.name !== "Event"
+                )[0].name,
+            }));
 
         console.log(pages);
 
@@ -480,13 +457,12 @@ function sendWebhooks(comitteeTasks: ComitteeTasks, testing: boolean) {
 }
 
 const resolveBatcher: Resolver = (
-    resolver,
+    env,
     request,
     tasks,
     useBinding,
     workerUrl
 ) => {
-    console.log("Tasks: ", tasks);
     // Find largest number of properties
     const maxProps =
         max(tasks.map((t) => Object.keys(t.properties).length)) ?? 0;
@@ -500,6 +476,7 @@ const resolveBatcher: Resolver = (
     return Promise.all(
         chunk(tasks, chunkSize).map((taskGroup) => {
             const url = useBinding ? request.clone().url : workerUrl;
+
             let newRequest = new Request(url, {
                 ...request.clone(),
                 method: "POST",
@@ -507,23 +484,26 @@ const resolveBatcher: Resolver = (
             });
 
             newRequest.headers.set("Content-Type", "application/json");
+            newRequest.headers.set("x-custom-token", env.SECRET_TOKEN);
 
-            return resolver
-                .fetch(newRequest)
+            console.log("Bind: ", useBinding);
+            console.log("workerUrl: ", workerUrl);
+
+            return env.NOTIONRESOLVER.fetch(newRequest)
                 .then((r) => r.json())
-                .catch((error) => console.log("error: ", error));
+                .catch((error) => console.log("error: ", error.message));
         })
     ).then((t) => t.flat());
 };
 
 function batchResolveTasks(
-    resolver: Fetcher,
+    env: Env,
     request: Request,
     useBinding: boolean,
     workerUrl: string
 ) {
     return (tasks: NotionTask[]): Promise<any[]> =>
-        resolveBatcher(resolver, request, tasks, useBinding, workerUrl);
+        resolveBatcher(env, request, tasks, useBinding, workerUrl);
 }
 
 const pingMessages = (taskGroups: GroupedTasks) => {
