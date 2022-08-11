@@ -159,6 +159,8 @@ export default {
         });
 
         console.log(env.NOTIONRESOLVER);
+        
+        setupEnvironment(env);
 
         const taskResolver = batchResolveTasks(
             env.NOTIONRESOLVER,
@@ -166,8 +168,6 @@ export default {
             env.useBinding,
             env.workerUrl
         );
-
-        setupEnvironment(env);
 
         const upcomingEvents = (
             await notion.databases.query({
