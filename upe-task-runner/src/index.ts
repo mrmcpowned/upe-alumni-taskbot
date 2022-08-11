@@ -59,6 +59,7 @@ export interface Env {
     CAREERDEV_HOOK: string;
     TEST_HOOK_1: string;
     TEST_HOOK_2: string;
+    SECRET_TOKEN: string;
 }
 
 const committees: DiscordConfig = {
@@ -147,6 +148,12 @@ export default {
         env: Env,
         ctx: ExecutionContext
     ): Promise<Response> {
+        if (
+            request.clone().headers.get("x-custom-token") !== env.SECRET_TOKEN
+        ) {
+            return new Response("Invalid Auth", { status: 401 });
+        }
+
         const notion = new Client({
             auth: env.NOTION_TOKEN,
         });
@@ -496,9 +503,10 @@ const resolveBatcher: Resolver = (
             let newRequest = new Request(url, {
                 ...request.clone(),
                 method: "POST",
-                headers: {},
                 body: JSON.stringify(taskGroup),
             });
+
+            newRequest.headers.set("Content-Type", "application/json");
 
             return resolver
                 .fetch(newRequest)
