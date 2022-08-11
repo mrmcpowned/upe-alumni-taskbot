@@ -43,6 +43,7 @@ export interface Env {
     // Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
     // MY_BUCKET: R2Bucket;
     useBinding: boolean;
+    testing: boolean;
     workerUrl: string;
     NOTIONRESOLVER: Fetcher;
     NOTION_TOKEN: string;
@@ -56,6 +57,8 @@ export interface Env {
     IR_HOOK: string;
     ENGAGEMENT_HOOK: string;
     CAREERDEV_HOOK: string;
+    TEST_HOOK_1: string;
+    TEST_HOOK_2: string;
 }
 
 const committees: DiscordConfig = {
@@ -101,17 +104,41 @@ const committees: DiscordConfig = {
     },
 };
 
-function setupWebhooks(env: Env) {
-    committees[Committee.Admin].webhook = env.ADMIN_HOOK;
-    committees[Committee.Membership].webhook = env.MEMBERSHIP_HOOK;
-    committees[Committee.Communications].webhook = env.COMMS_HOOK;
-    committees[Committee.Marketing].webhook = env.MARKETING_HOOK;
-    committees[Committee.SocialDigitalMedia].webhook = env.SDMEDIA_HOOK;
-    committees[Committee.SocialNetworking].webhook = env.SOCIALNET_HOOK;
-    committees[Committee.Technology].webhook = env.TECH_HOOK;
-    committees[Committee.IndustryRelations].webhook = env.IR_HOOK;
-    committees[Committee.StudentEngagement].webhook = env.ENGAGEMENT_HOOK;
-    committees[Committee.CareerDevelopment].webhook = env.CAREERDEV_HOOK;
+const isTrue = (value: string) => value === "true";
+
+function setupEnvironment(env: Env) {
+    env.useBinding = isTrue(env.useBinding as unknown as string);
+    env.testing = isTrue(env.testing as unknown as string);
+    committees[Committee.Admin].webhook = env.testing
+        ? env.TEST_HOOK_1
+        : env.ADMIN_HOOK;
+    committees[Committee.Membership].webhook = env.testing
+        ? env.TEST_HOOK_1
+        : env.MEMBERSHIP_HOOK;
+    committees[Committee.Communications].webhook = env.testing
+        ? env.TEST_HOOK_1
+        : env.COMMS_HOOK;
+    committees[Committee.Marketing].webhook = env.testing
+        ? env.TEST_HOOK_1
+        : env.MARKETING_HOOK;
+    committees[Committee.SocialDigitalMedia].webhook = env.testing
+        ? env.TEST_HOOK_1
+        : env.SDMEDIA_HOOK;
+    committees[Committee.SocialNetworking].webhook = env.testing
+        ? env.TEST_HOOK_2
+        : env.SOCIALNET_HOOK;
+    committees[Committee.Technology].webhook = env.testing
+        ? env.TEST_HOOK_2
+        : env.TECH_HOOK;
+    committees[Committee.IndustryRelations].webhook = env.testing
+        ? env.TEST_HOOK_2
+        : env.IR_HOOK;
+    committees[Committee.StudentEngagement].webhook = env.testing
+        ? env.TEST_HOOK_2
+        : env.ENGAGEMENT_HOOK;
+    committees[Committee.CareerDevelopment].webhook = env.testing
+        ? env.TEST_HOOK_2
+        : env.CAREERDEV_HOOK;
 }
 
 export default {
@@ -124,9 +151,7 @@ export default {
             auth: env.NOTION_TOKEN,
         });
 
-        if (!env.useBinding) {
-            env.NOTIONRESOLVER = { fetch };
-        }
+        console.log(env.NOTIONRESOLVER);
 
         const taskResolver = batchResolveTasks(
             env.NOTIONRESOLVER,
@@ -135,7 +160,7 @@ export default {
             env.workerUrl
         );
 
-        setupWebhooks(env);
+        setupEnvironment(env);
 
         const upcomingEvents = (
             await notion.databases.query({
@@ -320,7 +345,7 @@ export default {
                     )
             ) as NotionTask[];
 
-        console.log(tasksWithProperties);
+        console.log("Tasks with properties: ", tasksWithProperties);
 
         // Group tasks by assigned committee
 
@@ -339,9 +364,12 @@ export default {
         // Event Name - Task Name
         // - Tasks Due soon (ordered by due date)
 
-        console.log(Object.keys(teamAndDueGroupedTasks));
+        console.log(
+            "teamAndDueGroupedTasks keys: ",
+            Object.keys(teamAndDueGroupedTasks)
+        );
 
-        await sendWebhooks(teamAndDueGroupedTasks);
+        await sendWebhooks(teamAndDueGroupedTasks, env.testing);
 
         return new Response(
             JSON.stringify(teamAndDueGroupedTasks, undefined, 2)
@@ -406,7 +434,7 @@ function messageText(tasks: GroupedTasks) {
     return messageText.join("\n\n");
 }
 
-function sendWebhooks(comitteeTasks: ComitteeTasks) {
+function sendWebhooks(comitteeTasks: ComitteeTasks, testing: boolean) {
     const discordWebhooks = Object.entries(comitteeTasks)
         .filter(([, taskGroups]) => pingMessages(taskGroups).length)
         .map(([committee, taskGroups]) => {
@@ -420,7 +448,11 @@ function sendWebhooks(comitteeTasks: ComitteeTasks) {
                             "https://cdn.discordapp.com/icons/825566580922122240/86a4f047ac47ca24ae7c805be2bac514.webp?size=96",
                         // content: pingMessages(taskGroups).join("\n"),
                         content: [
-                            `<@&${committees[committee as Committee].roleId}>`,
+                            testing
+                                ? null
+                                : `<@&${
+                                      committees[committee as Committee].roleId
+                                  }>`,
                             pingMessages(taskGroups).join("\n"),
                         ].join("\n"),
                         embeds: [

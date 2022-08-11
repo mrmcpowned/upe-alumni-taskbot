@@ -7,6 +7,7 @@ compatibility_date = "2022-08-02"
 # the `key = "value"` format
 [vars]
 useBinding = "false"
+testing = "false"
 
 [[services]]
 binding = "NOTIONRESOLVER"
