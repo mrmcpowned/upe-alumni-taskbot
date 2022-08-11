@@ -1,0 +1,8 @@
+name = "notion-task-resolver"
+main = "src/index.ts"
+compatibility_date = "2022-08-03"
+
+# Define top-level environment variables
+# under the `[vars]` block using
+# the `key = "value"` format
+[vars]

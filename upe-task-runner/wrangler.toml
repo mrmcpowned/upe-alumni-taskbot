@@ -1,0 +1,14 @@
+name = "upe-alumni-taskbot"
+main = "src/index.ts"
+compatibility_date = "2022-08-02"
+
+# Define top-level environment variables
+# under the `[vars]` block using
+# the `key = "value"` format
+[vars]
+useBinding = "false"
+
+[[services]]
+binding = "NOTIONRESOLVER"
+service = "notion-task-resolver"
+environment = "production" 
