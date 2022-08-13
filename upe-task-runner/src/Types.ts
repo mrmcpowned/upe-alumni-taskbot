@@ -56,7 +56,7 @@ interface AdditionalTaskAttributes {
     properties: Record<string, PropertyItemObjectResponse>;
     owningTeam: Committee;
     dueDate: string;
-    status: string;
+    status: Status;
     parentEvent: NotionTask;
     title: string;
     dueGroup: DueDate;

@@ -1,15 +1,7 @@
 import { Client } from "@notionhq/client";
 import { DateTime, FixedOffsetZone, Interval, SystemZone, Zone } from "luxon";
-import { chunk, groupBy, map, mapValues, max, sortBy } from "lodash";
-import {
-    DatePropertyItemObjectResponse,
-    MultiSelectPropertyItemObjectResponse,
-    PageObjectResponse,
-    PartialPageObjectResponse,
-    PropertyItemListResponse,
-    PropertyItemObjectResponse,
-    SelectPropertyItemObjectResponse,
-} from "@notionhq/client/build/src/api-endpoints";
+import { chunk, groupBy, mapValues, max, pickBy, sortBy } from "lodash";
+import { SelectPropertyItemObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import {
     ComitteeTasks,
     Committee,
@@ -130,7 +122,7 @@ export default {
             auth: env.NOTION_TOKEN,
         });
 
-        console.log(env.NOTIONRESOLVER);
+        // console.log(env.NOTIONRESOLVER);
 
         setupEnvironment(env);
 
@@ -163,23 +155,18 @@ export default {
             })
         ).results as NotionTask[];
 
-        const pages = (await taskResolver(upcomingEvents))
-            .map((e) => {
-                console.log("Event: ", e);
-                return e;
-            })
-            .map((e) => ({
-                ...e,
-                title:
-                    e.properties["Name"].results[0]?.title.plain_text ??
-                    "Missing Title",
-                owningTeam: e.properties["Type"].multi_select.filter(
-                    (t: SelectPropertyItemObjectResponse["select"]) =>
-                        t?.name !== "Event"
-                )[0].name,
-            }));
+        const pages = (await taskResolver(upcomingEvents)).map((e) => ({
+            ...e,
+            title:
+                e.properties["Name"].results[0]?.title.plain_text ??
+                "Missing Title",
+            owningTeam: e.properties["Type"].multi_select.filter(
+                (t: SelectPropertyItemObjectResponse["select"]) =>
+                    t?.name !== "Event"
+            )[0].name,
+        }));
 
-        console.log(pages);
+        // console.log(pages);
 
         const events = mapValues(groupBy(pages, "id"), (e) => e[0]);
 
@@ -253,7 +240,7 @@ export default {
         //         .filter((id) => id)
         // );
 
-        console.log("events: ", events);
+        // console.log("events: ", events);
 
         const pastDueTasks = Object.keys(events)
             .map((e) => events[e].database?.id)
@@ -288,13 +275,13 @@ export default {
                     .then((response) => response.results)
             );
 
-        console.log("pastDueTasks: ", events);
+        // console.log("pastDueTasks: ", events);
 
         const tasks = (
             await Promise.all([...pastDueTasks, ...upcomingTasks])
         ).flat() as NotionTask[];
 
-        console.log(tasks);
+        // console.log(tasks);
 
         const tasksWithProperties = (await taskResolver(tasks))
             .flat()
@@ -329,7 +316,7 @@ export default {
                     )
             ) as NotionTask[];
 
-        console.log("Tasks with properties: ", tasksWithProperties);
+        // console.log("Tasks with properties: ", tasksWithProperties);
 
         // Group tasks by assigned committee
 
@@ -348,15 +335,20 @@ export default {
         // Event Name - Task Name
         // - Tasks Due soon (ordered by due date)
 
-        console.log(
-            "teamAndDueGroupedTasks keys: ",
-            Object.keys(teamAndDueGroupedTasks)
+        const pingableTeamsAndTasks = pickBy(
+            teamAndDueGroupedTasks,
+            (v) => pingMessages(v).length
         );
 
-        await sendWebhooks(teamAndDueGroupedTasks, env.testing);
+        console.log(
+            "pingableTeamsAndTasks keys: ",
+            Object.keys(pingableTeamsAndTasks)
+        );
+
+        await sendWebhooks(pingableTeamsAndTasks, env.testing);
 
         return new Response(
-            JSON.stringify(teamAndDueGroupedTasks, undefined, 2)
+            JSON.stringify(pingableTeamsAndTasks, undefined, 2)
         );
     },
 };
@@ -418,10 +410,15 @@ function messageText(tasks: GroupedTasks) {
     return messageText.join("\n\n");
 }
 
+export const statusSort = [
+    Status.NotStarted,
+    Status.InProgress,
+    Status.Completed,
+];
+
 function sendWebhooks(comitteeTasks: ComitteeTasks, testing: boolean) {
-    const discordWebhooks = Object.entries(comitteeTasks)
-        .filter(([, taskGroups]) => pingMessages(taskGroups).length)
-        .map(([committee, taskGroups]) => {
+    const discordWebhooks = Object.entries(comitteeTasks).map(
+        ([committee, taskGroups]) => {
             return (
                 fetch(committees[committee as Committee].webhook, {
                     method: "POST",
@@ -449,9 +446,10 @@ function sendWebhooks(comitteeTasks: ComitteeTasks, testing: boolean) {
                 })
                     // .then(async (r) => ({ r: await r.json(), h: r.headers }))
                     // .then(({ r, h }) => console.log(committee, " \n", h, "\n", r))
-                    .catch((error) => console.log(error))
+                    .catch((error) => new Response(error, { status: 500 }))
             );
-        });
+        }
+    );
 
     return Promise.all(discordWebhooks);
 }
@@ -486,12 +484,12 @@ const resolveBatcher: Resolver = (
             newRequest.headers.set("Content-Type", "application/json");
             newRequest.headers.set("x-custom-token", env.SECRET_TOKEN);
 
-            console.log("Bind: ", useBinding);
-            console.log("workerUrl: ", workerUrl);
+            // console.log("Bind: ", useBinding);
+            // console.log("workerUrl: ", workerUrl);
 
             return env.NOTIONRESOLVER.fetch(newRequest)
                 .then((r) => r.json())
-                .catch((error) => console.log("error: ", error.message));
+                .catch((error) => new Response(error, { status: 500 }));
         })
     ).then((t) => t.flat());
 };
