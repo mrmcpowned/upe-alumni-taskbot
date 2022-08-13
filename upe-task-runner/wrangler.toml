@@ -6,7 +6,7 @@ compatibility_date = "2022-08-02"
 # under the `[vars]` block using
 # the `key = "value"` format
 [vars]
-useBinding = "false"
+useBinding = "true"
 testing = "false"
 
 [[services]]
