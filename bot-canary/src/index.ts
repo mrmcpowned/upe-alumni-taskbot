@@ -1,3 +1,5 @@
+import { CommitteeTasks } from "../../upe-task-runner/src/Types";
+
 /**
  * Welcome to Cloudflare Workers! This is your first scheduled worker.
  *
@@ -39,8 +41,10 @@ export default {
 
         let error;
 
-        const res = await fetch(req).catch((err) => (error = err));
-		
+        const res: CommitteeTasks = await fetch(req)
+            .then((r) => r.json<CommitteeTasks>())
+            .catch((err) => (error = err));
+
         await fetch(env.CANARY_HOOK, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -50,7 +54,7 @@ export default {
                     "https://cdn.discordapp.com/icons/825566580922122240/86a4f047ac47ca24ae7c805be2bac514.webp?size=96",
                 content: error
                     ? "There was an error sending the tasks: " + error
-                    : "Sending tasks ran successfully",
+                    : "Sucessfully sent tasks for these teams: \n\n" + Object.keys(res).join("\n"),
             }),
         });
     },

@@ -3,7 +3,7 @@ import { DateTime, FixedOffsetZone, Interval, SystemZone, Zone } from "luxon";
 import { chunk, groupBy, mapValues, max, pickBy, sortBy } from "lodash";
 import { SelectPropertyItemObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import {
-    ComitteeTasks,
+    CommitteeTasks,
     Committee,
     DiscordConfig,
     DueDate,
@@ -416,7 +416,7 @@ export const statusSort = [
     Status.Completed,
 ];
 
-function sendWebhooks(comitteeTasks: ComitteeTasks, testing: boolean) {
+function sendWebhooks(comitteeTasks: CommitteeTasks, testing: boolean) {
     const discordWebhooks = Object.entries(comitteeTasks).map(
         ([committee, taskGroups]) => {
             return (

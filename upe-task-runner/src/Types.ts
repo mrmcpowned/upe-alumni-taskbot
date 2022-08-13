@@ -66,7 +66,7 @@ type Page = Omit<PageObjectResponse, "properties">;
 
 export type NotionTask = Page & AdditionalTaskAttributes;
 
-export type ComitteeTasks = {
+export type CommitteeTasks = {
     [key in Committee]?: GroupedTasks;
 };
 
