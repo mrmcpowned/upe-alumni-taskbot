@@ -1,0 +1,6 @@
+name = "bot-canary"
+main = "src/index.ts"
+compatibility_date = "2022-08-11"
+
+[triggers]
+crons = [ "0 15 * * *" ]
