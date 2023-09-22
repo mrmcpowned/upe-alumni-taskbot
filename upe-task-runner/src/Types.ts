@@ -30,6 +30,7 @@ export interface Env {
     TEST_HOOK_1: string;
     TEST_HOOK_2: string;
     SECRET_TOKEN: string;
+    LOG_HOOK: string;
 }
 
 export enum Committee {

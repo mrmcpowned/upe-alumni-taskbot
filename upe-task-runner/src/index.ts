@@ -167,215 +167,231 @@ export default {
 
     setupEnvironment(env);
 
-    const taskResolver = batchResolveTasks(
-      env,
-      request,
-      env.useBinding,
-      env.workerUrl
-    );
+    try {
+      const taskResolver = batchResolveTasks(
+        env,
+        request,
+        env.useBinding,
+        env.workerUrl
+      );
 
-    const upcomingEvents = (
-      await notion.databases.query({
-        database_id: "b42e8533001d43e7a32e8f2788fd548e",
-        filter: {
-          and: [
-            {
-              property: "Type",
-              multi_select: {
-                contains: "Event",
+      const upcomingEvents = (
+        await notion.databases.query({
+          database_id: "b42e8533001d43e7a32e8f2788fd548e",
+          filter: {
+            and: [
+              {
+                property: "Type",
+                multi_select: {
+                  contains: "Event",
+                },
               },
-            },
-            {
-              property: "Date",
-              date: {
-                next_month: {},
+              {
+                property: "Date",
+                date: {
+                  next_month: {},
+                },
               },
-            },
-          ],
-        },
-      })
-    ).results as NotionTask[];
+            ],
+          },
+        })
+      ).results as NotionTask[];
 
-    const pages = (await taskResolver(upcomingEvents)).map((e) => ({
-      ...e,
-      title:
-        e.properties["Name"].results[0]?.title.plain_text ?? "Missing Title",
-      owningTeam: e.properties["Type"].multi_select.filter(
-        (t: SelectPropertyItemObjectResponse["select"]) => t?.name !== "Event"
-      )[0].name,
-    }));
+      const pages = (await taskResolver(upcomingEvents)).map((e) => ({
+        ...e,
+        title:
+          e.properties["Name"].results[0]?.title.plain_text ?? "Missing Title",
+        owningTeam: e.properties["Type"].multi_select.filter(
+          (t: SelectPropertyItemObjectResponse["select"]) => t?.name !== "Event"
+        )[0].name,
+      }));
 
-    // console.log(pages);
+      // console.log(pages);
 
-    const events = mapValues(groupBy(pages, "id"), (e) => e[0]);
+      const events = mapValues(groupBy(pages, "id"), (e) => e[0]);
 
-    const pageIds = Object.keys(events);
+      const pageIds = Object.keys(events);
 
-    const pageDatabases = pageIds.map((id) =>
-      (async () =>
+      const pageDatabases = pageIds.map((id) =>
+        (async () =>
         (events[id].database = (
           await notion.blocks.children.list({
             block_id: id,
           })
         ).results.filter((b) => b.type === "child_database")[0]))()
-    );
-
-    await Promise.all(pageDatabases);
-
-    const eventByDb = mapValues(
-      groupBy(
-        pages.filter((p) => p.database),
-        "database.id"
-      ),
-      (e) => e[0]
-    );
-
-    // console.log(eventByDb);
-
-    // console.log("Resolved pages", JSON.stringify(pages, undefined, 2));
-
-    // Get all tasks from each database
-
-    const upcomingTasks = Object.keys(events)
-      .map((e) => events[e].database?.id)
-      .filter((id) => id)
-      .map((id) =>
-        notion.databases
-          .query({
-            database_id: id,
-            filter: {
-              and: [
-                {
-                  property: "Due Date",
-                  formula: {
-                    date: {
-                      on_or_before: DateTime.now()
-                        .plus({
-                          days: DateTime.now().weekday == 1 ? 14 : 7,
-                        })
-                        .toISO(),
-                    },
-                  },
-                },
-                {
-                  property: "Due Date",
-                  date: {
-                    on_or_after: DateTime.now().toISO(),
-                  },
-                },
-              ],
-            },
-          })
-          .then((response) => response.results)
       );
 
-    // console.log(
-    //     Object.keys(events)
-    //         .map((e) => events[e].database?.id)
-    //         .filter((id) => id)
-    // );
+      await Promise.all(pageDatabases);
 
-    // console.log("events: ", events);
-
-    const pastDueTasks = Object.keys(events)
-      .map((e) => events[e].database?.id)
-      .filter((id) => id)
-      .map((id) =>
-        notion.databases
-          .query({
-            database_id: id,
-            filter: {
-              and: [
-                {
-                  property: "Due Date",
-                  formula: {
-                    date: {
-                      before: DateTime.now().toISO(),
-                    },
-                  },
-                },
-                {
-                  property: "Due Date",
-                  formula: {
-                    date: {
-                      on_or_after: DateTime.now().minus({ weeks: 1 }).toISO(),
-                    },
-                  },
-                },
-              ],
-            },
-          })
-          .then((response) => response.results)
+      const eventByDb = mapValues(
+        groupBy(
+          pages.filter((p) => p.database),
+          "database.id"
+        ),
+        (e) => e[0]
       );
 
-    // console.log("pastDueTasks: ", events);
+      // console.log(eventByDb);
 
-    const tasks = (
-      await Promise.all([...pastDueTasks, ...upcomingTasks])
-    ).flat() as NotionTask[];
+      // console.log("Resolved pages", JSON.stringify(pages, undefined, 2));
 
-    // console.log(tasks);
+      // Get all tasks from each database
 
-    const tasksWithProperties = (await taskResolver(tasks))
-      .flat()
-      .map((t) => ({
-        ...t,
-        owningTeam:
-          t.properties["Type"].select?.name ??
-          t.properties["Type"].multi_select?.[0].name ??
-          null,
-        dueDate: t.properties["Due Date"].formula.date.start,
-        status: t.properties["Status"].status?.name ?? Status.NotStarted,
-        parentEvent: eventByDb[t.parent.database_id],
-        title:
-          t.properties["Name"].results[0]?.title.plain_text ?? "Missing Title",
-        assignedTo: t.properties["Assign"].results[0]?.people,
-      }))
-      .map((t) => ({
-        ...t,
-        dueGroup: dueGroup(t.dueDate),
-        owningTeam:
-          t.owningTeam == "Initiative"
-            ? t.parentEvent.owningTeam
-            : t.owningTeam,
-      }))
-      .filter(
-        (task) =>
-          !(task.status == Status.Completed && task.dueGroup == DueDate.PastDue)
-      ) as NotionTask[];
+      const upcomingTasks = Object.keys(events)
+        .map((e) => events[e].database?.id)
+        .filter((id) => id)
+        .map((id) =>
+          notion.databases
+            .query({
+              database_id: id,
+              filter: {
+                and: [
+                  {
+                    property: "Due Date",
+                    formula: {
+                      date: {
+                        on_or_before: DateTime.now()
+                          .plus({
+                            days: DateTime.now().weekday == 1 ? 14 : 7,
+                          })
+                          .toISO(),
+                      },
+                    },
+                  },
+                  {
+                    property: "Due Date",
+                    date: {
+                      on_or_after: DateTime.now().toISO(),
+                    },
+                  },
+                ],
+              },
+            })
+            .then((response) => response.results)
+        );
 
-    // console.log("Tasks with properties: ", tasksWithProperties);
+      // console.log(
+      //     Object.keys(events)
+      //         .map((e) => events[e].database?.id)
+      //         .filter((id) => id)
+      // );
 
-    // Group tasks by assigned committee
+      // console.log("events: ", events);
 
-    const teamGroupedTasks = groupBy(tasksWithProperties, "owningTeam");
+      const pastDueTasks = Object.keys(events)
+        .map((e) => events[e].database?.id)
+        .filter((id) => id)
+        .map((id) =>
+          notion.databases
+            .query({
+              database_id: id,
+              filter: {
+                and: [
+                  {
+                    property: "Due Date",
+                    formula: {
+                      date: {
+                        before: DateTime.now().toISO(),
+                      },
+                    },
+                  },
+                  {
+                    property: "Due Date",
+                    formula: {
+                      date: {
+                        on_or_after: DateTime.now().minus({ weeks: 1 }).toISO(),
+                      },
+                    },
+                  },
+                ],
+              },
+            })
+            .then((response) => response.results)
+        );
 
-    const teamAndDueGroupedTasks = mapValues(teamGroupedTasks, (tasks) =>
-      mapValues(groupBy(tasks, "dueGroup"), (taskGroup: NotionTask[]) =>
-        sortBy(taskGroup, [(task) => DateTime.fromISO(task.dueDate)])
-      )
-    );
+      // console.log("pastDueTasks: ", events);
 
-    // for each comittee
-    // - Past Due Tasks
-    // Event Name - Task Name
-    // - Tasks Due Today
-    // Event Name - Task Name
-    // - Tasks Due soon (ordered by due date)
+      const tasks = (
+        await Promise.all([...pastDueTasks, ...upcomingTasks])
+      ).flat() as NotionTask[];
 
-    const pingableTeamsAndTasks = pickBy(
-      teamAndDueGroupedTasks,
-      (v) => pingMessages(v).length
-    );
+      // console.log(tasks);
 
-    console.log(
-      "pingableTeamsAndTasks keys: ",
-      Object.keys(pingableTeamsAndTasks)
-    );
+      const tasksWithProperties = (await taskResolver(tasks))
+        .flat()
+        .map((t) => ({
+          ...t,
+          owningTeam:
+            t.properties["Type"].select?.name ??
+            t.properties["Type"].multi_select?.[0].name ??
+            null,
+          dueDate: t.properties["Due Date"].formula?.date?.start ?? eventByDb[t.parent.database_id].properties["Date"],
+          status: t.properties["Status"].status?.name ?? Status.NotStarted,
+          parentEvent: eventByDb[t.parent.database_id],
+          title:
+            t.properties["Name"].results[0]?.title.plain_text ?? "Missing Title",
+          assignedTo: t.properties["Assign"].results[0]?.people,
+        }))
+        .map((t) => ({
+          ...t,
+          dueGroup: dueGroup(t.dueDate),
+          owningTeam:
+            t.owningTeam == "Initiative"
+              ? t.parentEvent.owningTeam
+              : t.owningTeam,
+        }))
+        .filter(
+          (task) =>
+            !(task.status == Status.Completed && task.dueGroup == DueDate.PastDue)
+        ) as NotionTask[];
 
-    await sendWebhooks(pingableTeamsAndTasks, env.testing);
+      // console.log("Tasks with properties: ", tasksWithProperties);
 
-    return new Response(JSON.stringify(pingableTeamsAndTasks, undefined, 2));
+      // Group tasks by assigned committee
+
+      const teamGroupedTasks = groupBy(tasksWithProperties, "owningTeam");
+
+      const teamAndDueGroupedTasks = mapValues(teamGroupedTasks, (tasks) =>
+        mapValues(groupBy(tasks, "dueGroup"), (taskGroup: NotionTask[]) =>
+          sortBy(taskGroup, [(task) => DateTime.fromISO(task.dueDate)])
+        )
+      );
+
+      // for each comittee
+      // - Past Due Tasks
+      // Event Name - Task Name
+      // - Tasks Due Today
+      // Event Name - Task Name
+      // - Tasks Due soon (ordered by due date)
+
+      const pingableTeamsAndTasks = pickBy(
+        teamAndDueGroupedTasks,
+        (v) => pingMessages(v).length
+      );
+
+      console.log(
+        "pingableTeamsAndTasks keys: ",
+        Object.keys(pingableTeamsAndTasks)
+      );
+
+      await sendWebhooks(pingableTeamsAndTasks, env.testing);
+
+      return new Response(JSON.stringify(pingableTeamsAndTasks, undefined, 2));
+    }
+    catch (e) {
+      let message: string = [e?.message || '', e?.stack || ''].join("\n");
+      message = (message.length > 2000) ? message.substring(0, 2000) : message;
+      await fetch(env.LOG_HOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "🤖 Task Bot Canary",
+          avatar_url:
+            "https://cdn.discordapp.com/icons/825566580922122240/86a4f047ac47ca24ae7c805be2bac514.webp?size=96",
+          content: message
+        }),
+      });
+    }
   },
 };
 
