@@ -76,19 +76,19 @@ const committees: DiscordConfig = {
   },
   Membership: {
     webhook: "",
-    roleId: "1141176720892891218",
+    roleId: "1062533969784078356",
   },
   Communications: {
     webhook: "",
-    roleId: "1141176908554436728",
+    roleId: "1177934340399833138",
   },
   Marketing: {
     webhook: "",
-    roleId: "1141775247918506035",
+    roleId: "1062731497066483833",
   },
   [Committee.SocialDigitalMedia]: {
     webhook: "",
-    roleId: "1141176914896236564",
+    roleId: "1177933072902127646",
   },
   [Committee.SocialNetworking]: {
     webhook: "",
@@ -96,11 +96,11 @@ const committees: DiscordConfig = {
   },
   Technology: {
     webhook: "",
-    roleId: "1141176983473107065",
+    roleId: "1062521807250395176",
   },
   [Committee.IndustryRelations]: {
     webhook: "",
-    roleId: "1141176919199580221",
+    roleId: "1177932993633980497",
   },
   [Committee.StudentEngagement]: {
     webhook: "",
