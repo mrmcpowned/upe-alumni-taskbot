@@ -206,7 +206,7 @@ export default {
         )[0].name,
       }));
 
-      // console.log(pages);
+      console.log(pages);
 
       const events = mapValues(groupBy(pages, "id"), (e) => e[0]);
 
@@ -276,7 +276,7 @@ export default {
       //         .filter((id) => id)
       // );
 
-      // console.log("events: ", events);
+      console.log("events: ", events);
 
       const pastDueTasks = Object.keys(events)
         .map((e) => events[e].database?.id)
