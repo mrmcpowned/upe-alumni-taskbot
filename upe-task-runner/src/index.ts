@@ -315,7 +315,7 @@ export default {
         await Promise.all([...pastDueTasks, ...upcomingTasks])
       ).flat() as NotionTask[];
 
-      // console.log(tasks);
+      console.log("All tasks: ", tasks);
 
       const tasksWithProperties = (await taskResolver(tasks))
         .flat()
@@ -345,7 +345,7 @@ export default {
             !(task.status == Status.Completed && task.dueGroup == DueDate.PastDue)
         ) as NotionTask[];
 
-      // console.log("Tasks with properties: ", tasksWithProperties);
+      console.log("Tasks with properties: ", tasksWithProperties);
 
       // Group tasks by assigned committee
 
