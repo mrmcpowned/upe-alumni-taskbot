@@ -223,6 +223,13 @@ export default {
 
       await Promise.all(pageDatabases);
 
+      for (let e in events) {
+        if (!e?.database)
+        {
+          throw Error(`Unable to find database for '${e.title}'! Please check it's not nested in another block!`)
+        }
+      }
+
       const eventByDb = mapValues(
         groupBy(
           pages.filter((p) => p.database),
