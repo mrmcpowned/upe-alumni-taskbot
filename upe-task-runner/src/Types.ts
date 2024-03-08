@@ -49,7 +49,7 @@ export enum Committee {
 export type DiscordConfig = {
     [key in Committee]: {
         webhook: string;
-        roleId: string;
+        roleId: string | string[];
     };
 };
 

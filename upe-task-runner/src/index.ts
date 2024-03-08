@@ -29,7 +29,7 @@ import {
 const oldCommittees: DiscordConfig = {
   Admin: {
     webhook: "",
-    roleId: "975573393363578920",
+    roleId: ["746916839287947295","746917575417397310"],
   },
   Membership: {
     webhook: "",
@@ -187,11 +187,21 @@ export default {
                 },
               },
               {
-                property: "Date",
-                date: {
-                  next_month: {},
-                },
-              },
+                or: [
+                  {
+                    property: "Date",
+                    date: {
+                      next_month: {},
+                    },
+                  },
+                  {
+                    property: "Date",
+                    date: {
+                      past_week: {}
+                    }
+                  }
+                ]
+              }
             ],
           },
         })
@@ -206,7 +216,7 @@ export default {
         )[0].name,
       }));
 
-      console.log(pages);
+      // console.log(pages);
 
       const events = mapValues(groupBy(pages, "id"), (e) => e[0]);
 
@@ -284,7 +294,7 @@ export default {
       //         .filter((id) => id)
       // );
 
-      console.log("events: ", events);
+      // console.log("events: ", events);
 
       const pastDueTasks = Object.keys(events)
         .map((e) => events[e].database?.id)
@@ -323,7 +333,8 @@ export default {
         await Promise.all([...pastDueTasks, ...upcomingTasks])
       ).flat() as NotionTask[];
 
-      console.log("All tasks: ", tasks);
+      console.log("Past due tasks count: ", pastDueTasks.length);
+      console.log("Upcoming tasks count: ", upcomingTasks.length);
 
       const tasksWithProperties = (await taskResolver(tasks))
         .flat()
@@ -353,7 +364,7 @@ export default {
             !(task.status == Status.Completed && task.dueGroup == DueDate.PastDue)
         ) as NotionTask[];
 
-      console.log("Tasks with properties: ", tasksWithProperties);
+      console.log("Tasks with properties count: ", tasksWithProperties.length);
 
       // Group tasks by assigned committee
 
@@ -364,6 +375,15 @@ export default {
           sortBy(taskGroup, [(task) => DateTime.fromISO(task.dueDate)])
         )
       );
+
+      console.log("Due grouped tasks", Object.keys(teamAndDueGroupedTasks).map(k => ({
+        team: k,
+        dues: Object.keys(teamAndDueGroupedTasks[k]).map(d => ({
+          dueGroup: d,
+          numDue: teamAndDueGroupedTasks[k][d].length,
+          dueDates: teamAndDueGroupedTasks[k][d].map(d => d.dueDate)
+        }))
+      })));
 
       // for each comittee
       // - Past Due Tasks
@@ -469,8 +489,10 @@ export const statusSort = [
 function sendWebhooks(comitteeTasks: CommitteeTasks, testing: boolean) {
   const discordWebhooks = Object.entries(comitteeTasks).map(
     ([committee, taskGroups]) => {
+      const {roleId, webhook} = committees[committee as Committee]
+      const roleIds = Array.isArray(roleId) ? roleId : [roleId];
       return (
-        fetch(committees[committee as Committee].webhook, {
+        fetch(webhook, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -481,7 +503,7 @@ function sendWebhooks(comitteeTasks: CommitteeTasks, testing: boolean) {
             content: [
               testing
                 ? null
-                : `<@&${committees[committee as Committee].roleId}>`,
+                : roleIds.map(id => `<@&${id}>`).join(" "),
               pingMessages(taskGroups).join("\n"),
             ].join("\n"),
             embeds: [
