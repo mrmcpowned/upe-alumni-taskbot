@@ -223,10 +223,11 @@ export default {
 
       await Promise.all(pageDatabases);
 
-      for (let e in events) {
-        if (!e?.database)
+      for (let eventId in events) {
+        console.log(eventId);
+        if (!events[eventId]?.database)
         {
-          throw Error(`Unable to find database for '${e.title}'! Please check it's not nested in another block!`)
+          throw Error(`Unable to find database for '${events[eventId].title}'! Please check it's not nested in another block!`)
         }
       }
 
