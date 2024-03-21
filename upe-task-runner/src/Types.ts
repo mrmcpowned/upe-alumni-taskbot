@@ -41,9 +41,9 @@ export enum Committee {
     SocialDigitalMedia = "Social & Digital Media",
     SocialNetworking = "Social & Networking",
     Technology = "Technology",
-    IndustryRelations = "Industry Relations",
-    StudentEngagement = "Student Engagement",
-    CareerDevelopment = "Career Development",
+    IndustryRelations = "Reach",
+    StudentEngagement = "Uplift",
+    CareerDevelopment = "Explore",
 }
 
 export type DiscordConfig = {
