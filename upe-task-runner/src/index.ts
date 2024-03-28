@@ -55,15 +55,15 @@ const oldCommittees: DiscordConfig = {
     webhook: "",
     roleId: "975574219737944066",
   },
-  [Committee.IndustryRelations]: {
+  [Committee.Reach]: {
     webhook: "",
     roleId: "975574156739510312",
   },
-  [Committee.StudentEngagement]: {
+  [Committee.Uplift]: {
     webhook: "",
     roleId: "975574482825662535",
   },
-  [Committee.CareerDevelopment]: {
+  [Committee.Explore]: {
     webhook: "",
     roleId: "975574372377055302",
   },
@@ -98,17 +98,26 @@ const committees: DiscordConfig = {
     webhook: "",
     roleId: "1062521807250395176",
   },
-  [Committee.IndustryRelations]: {
+  [Committee.Reach]: {
     webhook: "",
-    roleId: "1177932993633980497",
+    roleId: [
+      "746920914922242149", // Reach PM
+      "881804508324306954" // Reach Committee
+    ],
   },
-  [Committee.StudentEngagement]: {
+  [Committee.Uplift]: {
     webhook: "",
-    roleId: "1141176993820463124",
+    roleId: [
+      "798305021007233074", // Uplift PM
+      "1174489356610850857" // Uplift Committee
+    ],
   },
-  [Committee.CareerDevelopment]: {
+  [Committee.Explore]: {
     webhook: "",
-    roleId: "1141176990003646526",
+    roleId: [
+      "746920050199494678", // Explore PM
+      "1072980940172828783" // Explore Committee
+    ],
   },
 };
 
@@ -138,13 +147,13 @@ function setupEnvironment(env: Env) {
   committees[Committee.Technology].webhook = env.testing
     ? env.TEST_HOOK_2
     : env.TECH_HOOK;
-  committees[Committee.IndustryRelations].webhook = env.testing
+  committees[Committee.Reach].webhook = env.testing
     ? env.TEST_HOOK_2
     : env.IR_HOOK;
-  committees[Committee.StudentEngagement].webhook = env.testing
+  committees[Committee.Uplift].webhook = env.testing
     ? env.TEST_HOOK_2
     : env.ENGAGEMENT_HOOK;
-  committees[Committee.CareerDevelopment].webhook = env.testing
+  committees[Committee.Explore].webhook = env.testing
     ? env.TEST_HOOK_2
     : env.CAREERDEV_HOOK;
 }
