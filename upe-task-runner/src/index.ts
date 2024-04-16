@@ -26,53 +26,13 @@ import {
  * Learn more at https://developers.cloudflare.com/workers/runtime-apis/scheduled-event/
  */
 
-const oldCommittees: DiscordConfig = {
-  Admin: {
-    webhook: "",
-    roleId: ["746916839287947295","746917575417397310"],
-  },
-  Membership: {
-    webhook: "",
-    roleId: "975573852576944139",
-  },
-  Communications: {
-    webhook: "",
-    roleId: "975573936655978506",
-  },
-  Marketing: {
-    webhook: "",
-    roleId: "975574007061573712",
-  },
-  [Committee.SocialDigitalMedia]: {
-    webhook: "",
-    roleId: "975574063978250280",
-  },
-  [Committee.SocialNetworking]: {
-    webhook: "",
-    roleId: "975574268077301800",
-  },
-  Technology: {
-    webhook: "",
-    roleId: "975574219737944066",
-  },
-  [Committee.Reach]: {
-    webhook: "",
-    roleId: "975574156739510312",
-  },
-  [Committee.Uplift]: {
-    webhook: "",
-    roleId: "975574482825662535",
-  },
-  [Committee.Explore]: {
-    webhook: "",
-    roleId: "975574372377055302",
-  },
-};
-
 const committees: DiscordConfig = {
   Admin: {
     webhook: "",
-    roleId: "1141775284924842065",
+    roleId: [
+      "746916839287947295", // Chapter Pres
+      "746917575417397310" // Chapter VP
+    ],
   },
   Membership: {
     webhook: "",
